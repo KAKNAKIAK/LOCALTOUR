@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="ko" class="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Station</title>
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00A79D",
+                        "secondary": "#F5F5F5",
+                        "accent": "#FFC107",
+                        "text-primary": "#333333",
+                        "text-secondary": "#666666",
+                        "background-light": "#f6f8f8",
+                        "background-dark": "#10221d",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "Noto Sans KR", "sans-serif"]
+                    }
+                },
+            },
+        }
+    </script>
+
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-spin-custom {
+            animation: spin 1s linear infinite;
+        }
+
+        body {
+            font-family: "Plus Jakarta Sans", "Noto Sans KR", sans-serif;
+            min-height: 100vh;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .modal-enter {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="bg-background-light text-text-primary relative">
+
+    <div id="app"></div>
+
+    <!-- Firebase 모듈 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // 1. Firebase 설정
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZvfs5PFT4BvbYnRd4ZkjQkmiVTy1Ov0A",
+            authDomain: "withan-1120.firebaseapp.com",
+            projectId: "withan-1120",
+            storageBucket: "withan-1120.firebasestorage.app",
+            messagingSenderId: "638498968442",
+            appId: "1:638498968442:web:aaaf12d2385737254cfcc3",
+            measurementId: "G-TBD9W8B634"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const COL_PRODUCTS = 'travel_products';
+        const COL_COUNTRIES = 'travel_countries';
+        const COL_REGIONS = 'travel_regions';
+
+        // ==========================================
+        // 2. 데이터 정의
+        // ==========================================
+
+        const ADMIN_PASSWORD_ENCODED = "MTIzMw==";
+        const LOGO_IMAGE_URL = "https://www.naeiltour.co.kr/_Img/logo_naeiltour.png";
+        const BANNER_IMAGE_URL = "https://www.naeiltour.co.kr/_Img/Main/search-menu-infree.png";
+
+        const DEFAULT_COUNTRIES = [
+            { id: 'vietnam', name: '베트남', nameEn: 'Vietnam', icon: '🇻🇳' },
+            { id: 'thailand', name: '태국', nameEn: 'Thailand', icon: '🇹🇭' },
+            { id: 'philippines', name: '필리핀', nameEn: 'Philippines', icon: '🇵🇭' },
+        ];
+
+        const DEFAULT_REGIONS = [
+            { id: 'phuquoc', countryId: 'vietnam', name: '푸꾸옥', nameEn: 'Phu Quoc' },
+            { id: 'danang', countryId: 'vietnam', name: '다낭', nameEn: 'Da Nang' },
+            { id: 'nhatrang', countryId: 'vietnam', name: '나트랑', nameEn: 'Nha Trang' },
+            { id: 'bangkok', countryId: 'thailand', name: '방콕', nameEn: 'Bangkok', badge: 'HOT' },
+            { id: 'chiangmai', countryId: 'thailand', name: '치앙마이', nameEn: 'Chiang Mai' },
+            { id: 'cebu', countryId: 'philippines', name: '세부', nameEn: 'Cebu' },
+            { id: 'bohol', countryId: 'philippines', name: '보홀', nameEn: 'Bohol' },
+        ];
+
+        const INITIAL_SAMPLE_DATA = [
+            {
+                region: 'phuquoc',
+                productName: "푸꾸옥 프라이빗 렌트카 투어",
+                category: "투어",
+                priority: 100,
+                heroImage: "https://images.unsplash.com/photo-1586943101559-4cdcf86a6f87?auto=format&fit=crop&q=80&w=1000",
+                operatingHours: "09:00 - 21:00",
+                description: "우리끼리만 편안하게! 원하는 일정대로 자유롭게 이동하는 프라이빗 렌트카 서비스입니다.",
+                pricingOptions: [
+                    { id: 'opt1', name: '승용차 (4인승)', price: 60000, unit: '1대' },
+                    { id: 'opt2', name: 'SUV (7인승)', price: 75000, unit: '1대' },
+                ],
+                policies: { cancellation: "이용일 2일 전까지 무료 취소 가능" },
+                faq: [],
+                inputFields: []
+            },
+            {
+                region: 'danang',
+                productName: "다낭 바나힐 일일 투어",
+                category: "투어",
+                priority: 90,
+                heroImage: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&q=80&w=1000",
+                operatingHours: "08:00 - 17:00",
+                description: "거대한 손이 받치고 있는 골든 브릿지를 만나보세요.",
+                pricingOptions: [{ id: 't1', name: '성인', price: 55000, unit: '1인' }],
+                policies: {},
+                faq: [],
+                inputFields: []
+            }
+        ];
+
+        // ==========================================
+        // 3. 상태 관리
+        // ==========================================
+
+        const state = {
+            currentUser: null,
+            countries: [],
+            regions: [],
+            products: [],
+
+            loading: true,
+            isAdmin: false,
+            showAuthModal: false,
+            passwordInput: "",
+            loginError: false,
+
+            view: 'home',
+            selectedCountry: null,
+            selectedRegion: null,
+            selectedProductId: null,
+
+            viewData: null,
+            isNewProduct: false,
+            activeTab: 'info',
+            deleteTargetId: null,
+
+            adminTab: 'products',
+
+            // Region Modal State
+            isAddingRegion: false,
+            editingRegionId: null,
+            newRegionData: { countryId: '', name: '', nameEn: '' },
+
+            // Country Modal State
+            isAddingCountry: false,
+            editingCountryId: null,
+            newCountryData: { name: '', nameEn: '', icon: '✈️' },
+
+            // Editor Region Search
+            editorRegionSearch: "",
+
+            searchQuery: "",
+            selectedCategory: "전체",
+            sortMode: "recommend",
+
+            toast: { show: false, message: '', type: 'success' },
+            initialLoadDone: false
+        };
+
+        const formatCurrency = (amount) => new Intl.NumberFormat('ko-KR').format(amount);
+        function checkPassword(input) { return input && btoa(input.trim()) === ADMIN_PASSWORD_ENCODED; }
+        function showToast(message, type = 'success') {
+            state.toast = { show: true, message, type };
+            render();
+            setTimeout(() => { state.toast.show = false; render(); }, 4000);
+        }
+
+        function setState(callback, shouldRender = true) {
+            callback(state);
+            if (shouldRender) render();
+        }
+
+        let debounceTimer;
+        function debounceRender() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(render, 300);
+        }
+
+        function getMinPrice(product) {
+            if (!product.pricingOptions || !Array.isArray(product.pricingOptions)) return Infinity;
+            const validPrices = product.pricingOptions.map(opt => Number(opt.price)).filter(p => p > 0);
+            return validPrices.length === 0 ? Infinity : Math.min(...validPrices);
+        }
+
+        function getRegionProductCount(regionId) {
+            return state.products.filter(p => (p.region || 'phuquoc') === regionId).length;
+        }
+
+        function getCountryProductCount(countryId) {
+            const countryRegionIds = state.regions.filter(r => r.countryId === countryId).map(r => r.id);
+            return state.products.filter(p => countryRegionIds.includes(p.region || 'phuquoc')).length;
+        }
+
+        // ==========================================
+        // 4. Routing
+        // ==========================================
+
+        function safePushState(data, title, url) {
+            try { history.pushState(data, title, url); } catch (e) { }
+        }
+
+        window.addEventListener('popstate', (event) => {
+            const hash = window.location.hash;
+
+            if (hash.startsWith('#product=')) {
+                const id = hash.replace('#product=', '');
+                const product = state.products.find(p => p.id === id);
+                if (product) {
+                    const region = state.regions.find(r => r.id === (product.region || 'phuquoc')) || state.regions[0] || {};
+                    setState(s => {
+                        s.view = 'detail';
+                        s.selectedProductId = id;
+                        s.selectedRegion = region.id;
+                        s.selectedCountry = region.countryId;
+                        s.viewData = JSON.parse(JSON.stringify(product));
+                        s.activeTab = 'info';
+                    });
+                }
+            } else if (hash.startsWith('#region=')) {
+                const regionId = hash.replace('#region=', '');
+                const region = state.regions.find(r => r.id === regionId);
+                if (region) {
+                    setState(s => {
+                        s.view = 'product_list';
+                        s.selectedRegion = regionId;
+                        s.selectedCountry = region.countryId;
+                        s.selectedProductId = null;
+                    });
+                }
+            } else if (hash.startsWith('#country=')) {
+                const countryId = hash.replace('#country=', '');
+                setState(s => {
+                    s.view = 'region_list';
+                    s.selectedCountry = countryId;
+                    s.selectedRegion = null;
+                    s.selectedProductId = null;
+                });
+            } else if (hash === '#admin') {
+                if (state.isAdmin) setState(s => { s.view = 'admin_dashboard'; });
+                else { safePushState(null, '', ' '); setState(s => s.view = 'home'); }
+            } else if (hash === '#new') {
+                setState(s => { s.view = 'edit'; s.isNewProduct = true; });
+            } else {
+                setState(s => {
+                    s.view = 'home';
+                    s.selectedCountry = null;
+                    s.selectedRegion = null;
+                    s.selectedProductId = null;
+                });
+            }
+        });
+
+        // ==========================================
+        // 5. Firebase Data Listeners
+        // ==========================================
+
+        const initAuth = async () => {
+            try { await signInAnonymously(auth); }
+            catch (e) { console.error(e); showToast("인증 실패", "error"); setState(s => s.loading = false); }
+        };
+
+        const subscribeToData = () => {
+            onAuthStateChanged(auth, (user) => {
+                state.currentUser = user;
+                if (!user) return;
+
+                onSnapshot(collection(db, COL_COUNTRIES), (snap) => {
+                    const items = [];
+                    snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+                    items.sort((a, b) => a.name.localeCompare(b.name));
+                    setState(s => s.countries = items);
+                });
+
+                onSnapshot(collection(db, COL_REGIONS), (snap) => {
+                    const items = [];
+                    snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+                    items.sort((a, b) => a.name.localeCompare(b.name));
+                    setState(s => s.regions = items);
+                });
+
+                onSnapshot(collection(db, COL_PRODUCTS), (snapshot) => {
+                    const items = [];
+                    snapshot.forEach((doc) => items.push({ id: doc.id, ...doc.data() }));
+                    items.sort((a, b) => (b.priority || 0) - (a.priority || 0) || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+                    setState(s => {
+                        s.products = items;
+                        s.loading = false;
+
+                        if (!s.initialLoadDone && s.regions.length > 0) {
+                            const hash = window.location.hash;
+                            if (hash === '#admin') { s.view = 'admin_dashboard'; }
+                            else if (hash.startsWith('#product=')) {
+                                const id = hash.replace('#product=', '');
+                                const p = items.find(x => x.id === id);
+                                if (p) {
+                                    const r = s.regions.find(reg => reg.id === (p.region || 'phuquoc'));
+                                    s.view = 'detail';
+                                    s.selectedProductId = id;
+                                    s.selectedRegion = r ? r.id : null;
+                                    s.selectedCountry = r ? r.countryId : null;
+                                    s.viewData = JSON.parse(JSON.stringify(p));
+                                }
+                            } else if (hash.startsWith('#region=')) {
+                                const rid = hash.replace('#region=', '');
+                                const r = s.regions.find(reg => reg.id === rid);
+                                s.view = 'product_list';
+                                s.selectedRegion = rid;
+                                s.selectedCountry = r ? r.countryId : null;
+                            } else if (hash.startsWith('#country=')) {
+                                s.view = 'region_list';
+                                s.selectedCountry = hash.replace('#country=', '');
+                            }
+                            s.initialLoadDone = true;
+                        }
+
+                        if (s.selectedProductId && s.view === 'detail' && !s.isAdmin) {
+                            const updated = items.find(p => p.id === s.selectedProductId);
+                            if (updated) s.viewData = JSON.parse(JSON.stringify(updated));
+                        }
+                    });
+                });
+            });
+        };
+
+        setTimeout(() => { if (state.loading) setState(s => s.loading = false); }, 5000);
+
+        // ==========================================
+        // 6. Actions
+        // ==========================================
+        window.actions = {
+            toggleAuthModal: (show) => setState(s => s.showAuthModal = show),
+            updatePasswordInput: (val) => { state.passwordInput = val; },
+            handleAdminLogin: () => {
+                if (checkPassword(state.passwordInput)) {
+                    setState(s => { s.isAdmin = true; s.showAuthModal = false; s.passwordInput = ""; });
+                    showToast("관리자 권한 획득");
+                    actions.goAdminDashboard();
+                } else {
+                    setState(s => s.loginError = true);
+                }
+            },
+            toggleAdminMode: () => {
+                if (state.isAdmin) setState(s => s.isAdmin = false);
+                else setState(s => s.showAuthModal = true);
+            },
+
+            goHome: () => {
+                safePushState(null, '', ' ');
+                setState(s => { s.view = 'home'; s.selectedCountry = null; s.selectedRegion = null; s.selectedProductId = null; });
+            },
+            goAdminDashboard: () => {
+                safePushState({ view: 'admin' }, '', '#admin');
+                setState(s => { s.view = 'admin_dashboard'; s.adminTab = 'products'; });
+            },
+            setAdminTab: (tab) => setState(s => s.adminTab = tab),
+
+            selectCountry: (countryId) => {
+                safePushState({ country: countryId }, '', `#country=${countryId}`);
+                setState(s => { s.view = 'region_list'; s.selectedCountry = countryId; s.selectedRegion = null; });
+            },
+            selectRegion: (regionId) => {
+                safePushState({ region: regionId }, '', `#region=${regionId}`);
+                setState(s => { s.view = 'product_list'; s.selectedRegion = regionId; s.selectedProductId = null; s.searchQuery = ''; s.selectedCategory = '전체'; });
+            },
+            selectProduct: (id) => {
+                const product = state.products.find(p => p.id === id);
+                if (product) {
+                    safePushState({ productId: id }, '', `#product=${id}`);
+                    setState(s => { s.view = 'detail'; s.selectedProductId = id; s.viewData = JSON.parse(JSON.stringify(product)); });
+                }
+            },
+            // [New] Tab Action
+            setTab: (tab) => setState(s => s.activeTab = tab),
+
+            back: () => {
+                if (state.view === 'admin_dashboard') { actions.goHome(); return; }
+                if (state.view === 'detail') {
+                    if (state.selectedRegion) actions.selectRegion(state.selectedRegion);
+                    else actions.goHome();
+                    return;
+                }
+                if (state.view === 'product_list') {
+                    if (state.selectedCountry) actions.selectCountry(state.selectedCountry);
+                    else actions.goHome();
+                    return;
+                }
+                if (state.view === 'region_list') { actions.goHome(); return; }
+                if (state.view === 'edit') {
+                    if (state.selectedProductId && state.selectedProductId !== 'temp') actions.selectProduct(state.selectedProductId);
+                    else if (state.selectedRegion) actions.selectRegion(state.selectedRegion);
+                    else if (state.isAdmin) actions.goAdminDashboard();
+                    else actions.goHome();
+                    return;
+                }
+                actions.goHome();
+            },
+
+            initializeMetadata: async () => {
+                if (!confirm("국가/지역 기초 데이터를 DB에 생성하시겠습니까? (기존 데이터 유지)")) return;
+                try {
+                    for (const c of DEFAULT_COUNTRIES) {
+                        const { id, ...data } = c;
+                        await updateDoc(doc(db, COL_COUNTRIES, id), data).catch(async () => {
+                            await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ setDoc, doc }) => setDoc(doc(db, COL_COUNTRIES, id), data));
+                        });
+                    }
+                    for (const r of DEFAULT_REGIONS) {
+                        const { id, ...data } = r;
+                        await updateDoc(doc(db, COL_REGIONS, id), data).catch(async () => {
+                            await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then(({ setDoc, doc }) => setDoc(doc(db, COL_REGIONS, id), data));
+                        });
+                    }
+                    showToast("기초 데이터 생성 완료");
+                } catch (e) { console.error(e); showToast("초기화 실패", "error"); }
+            },
+
+            // Admin - Region Management
+            openAddRegionModal: () => {
+                setState(s => {
+                    s.isAddingRegion = true;
+                    s.editingRegionId = null;
+                    s.newRegionData = { countryId: s.countries[0]?.id || '', name: '', nameEn: '' };
+                });
+            },
+            openEditRegionModal: (id) => {
+                const r = state.regions.find(reg => reg.id === id);
+                if (!r) return;
+                setState(s => {
+                    s.isAddingRegion = true;
+                    s.editingRegionId = id;
+                    s.newRegionData = { countryId: r.countryId, name: r.name, nameEn: r.nameEn };
+                });
+            },
+            closeAddRegionModal: () => setState(s => s.isAddingRegion = false),
+            updateNewRegionData: (field, val) => setState(s => s.newRegionData[field] = val, false),
+            saveNewRegion: async () => {
+                const d = state.newRegionData;
+                if (!d.name || !d.countryId) { showToast("지역명과 국가는 필수입니다.", "error"); return; }
+                try {
+                    const { setDoc, updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+                    if (state.editingRegionId) {
+                        // Edit Mode
+                        await updateDoc(doc(db, COL_REGIONS, state.editingRegionId), d);
+                        showToast("지역 정보가 수정되었습니다.");
+                    } else {
+                        // Add Mode
+                        const id = d.nameEn ? d.nameEn.toLowerCase().replace(/\s+/g, '') : `reg_${Date.now()}`;
+                        await setDoc(doc(db, COL_REGIONS, id), { ...d, id: id });
+                        showToast("지역이 추가되었습니다.");
+                    }
+                    actions.closeAddRegionModal();
+                } catch (e) { showToast("저장 실패: " + e.message, "error"); }
+            },
+            deleteRegion: async (id) => {
+                if (getRegionProductCount(id) > 0) { showToast("이 지역에 등록된 상품이 있어 삭제할 수 없습니다.", "error"); return; }
+                if (!confirm("정말 이 지역을 삭제하시겠습니까?")) return;
+                try {
+                    await deleteDoc(doc(db, COL_REGIONS, id));
+                    showToast("삭제되었습니다.");
+                } catch (e) { showToast("삭제 실패", "error"); }
+            },
+
+            // Admin - Country Management
+            openAddCountryModal: () => {
+                setState(s => {
+                    s.isAddingCountry = true;
+                    s.editingCountryId = null; // Reset edit ID
+                    s.newCountryData = { name: '', nameEn: '', icon: '✈️' };
+                });
+            },
+            openEditCountryModal: (id) => {
+                const c = state.countries.find(cnt => cnt.id === id);
+                if (!c) return;
+                setState(s => {
+                    s.isAddingCountry = true;
+                    s.editingCountryId = id;
+                    s.newCountryData = { name: c.name, nameEn: c.nameEn, icon: c.icon };
+                });
+            },
+            closeAddCountryModal: () => setState(s => s.isAddingCountry = false),
+            updateNewCountryData: (field, val) => setState(s => s.newCountryData[field] = val, false),
+
+            saveNewCountry: async () => {
+                const d = state.newCountryData;
+                if (!d.name) { showToast("국가명은 필수입니다.", "error"); return; }
+                try {
+                    const { setDoc, updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+                    if (state.editingCountryId) {
+                        // Edit
+                        await updateDoc(doc(db, COL_COUNTRIES, state.editingCountryId), d);
+                        showToast("국가 정보가 수정되었습니다.");
+                    } else {
+                        // Add
+                        const id = d.nameEn ? d.nameEn.toLowerCase().replace(/\s+/g, '') : `cnt_${Date.now()}`;
+                        await setDoc(doc(db, COL_COUNTRIES, id), { ...d, id: id });
+                        showToast("국가가 추가되었습니다.");
+                    }
+                    actions.closeAddCountryModal();
+                } catch (e) { showToast("저장 실패: " + e.message, "error"); }
+            },
+            deleteCountry: async (id) => {
+                const hasRegions = state.regions.some(r => r.countryId === id);
+                if (hasRegions) { showToast("이 국가에 등록된 지역이 있어 삭제할 수 없습니다.", "error"); return; }
+                if (!confirm("정말 이 국가를 삭제하시겠습니까?")) return;
+                try {
+                    await deleteDoc(doc(db, COL_COUNTRIES, id));
+                    showToast("삭제되었습니다.");
+                } catch (e) { showToast("삭제 실패", "error"); }
+            },
+
+            // Product CRUD
+            addProduct: () => {
+                // const defaultRegion = state.selectedRegion || (state.regions[0]?.id); // [기존 코드 주석]
+                // [변경] 신규 등록 시 검색창이 바로 보이도록 빈 값("")으로 초기화
+                const newProduct = {
+                    region: "",
+                    productName: "",
+                    heroImage: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=1000",
+                    category: "투어",
+                    priority: 0,
+                    operatingHours: "09:00 - 18:00",
+                    description: "",
+                    pricingOptions: [],
+                    policies: { cancellation: "" },
+                    faq: [],
+                    inputFields: []
+                };
+                safePushState({ mode: 'new' }, '', '#new');
+                setState(s => { s.view = 'edit'; s.viewData = newProduct; s.selectedProductId = 'temp'; s.isNewProduct = true; s.editorRegionSearch = ""; });
+            },
+            editProduct: (id) => {
+                if (id) {
+                    const product = state.products.find(p => p.id === id);
+                    if (product) {
+                        setState(s => { s.view = 'edit'; s.selectedProductId = id; s.viewData = JSON.parse(JSON.stringify(product)); s.isNewProduct = false; s.editorRegionSearch = ""; });
+                    }
+                } else {
+                    setState(s => { s.view = 'edit'; s.isNewProduct = false; s.editorRegionSearch = ""; });
+                }
+            },
+            saveProduct: async () => {
+                if (!state.viewData) return;
+                try {
+                    const colRef = collection(db, COL_PRODUCTS);
+                    // region이 없어도 저장 가능하도록 수정하거나, 유효성 검사 추가 가능
+                    // if (!state.viewData.region) { showToast("지역을 선택해주세요.", "error"); return; }
+
+                    if (state.isNewProduct) {
+                        await addDoc(colRef, { ...state.viewData, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+                        showToast("등록되었습니다.");
+                    } else {
+                        await updateDoc(doc(db, COL_PRODUCTS, state.viewData.id), { ...state.viewData, updatedAt: serverTimestamp() });
+                        showToast("수정되었습니다.");
+                    }
+
+                    if (state.view === 'edit') {
+                        if (state.isAdmin) actions.goAdminDashboard();
+                        else if (state.isNewProduct) actions.selectRegion(state.viewData.region);
+                        else actions.selectProduct(state.viewData.id);
+                    }
+                } catch (e) { console.error(e); showToast("저장 실패: " + e.message, "error"); }
+            },
+            initiateDelete: (e, id) => { e.stopPropagation(); setState(s => s.deleteTargetId = id); },
+            cancelDelete: () => setState(s => s.deleteTargetId = null),
+            executeDelete: async () => {
+                if (!state.deleteTargetId) return;
+                try {
+                    await deleteDoc(doc(db, COL_PRODUCTS, state.deleteTargetId));
+                    setState(s => { s.deleteTargetId = null; });
+                    if (state.view === 'detail') {
+                        if (state.selectedRegion) actions.selectRegion(state.selectedRegion);
+                        else actions.goHome();
+                    } else if (state.view === 'admin_dashboard') {
+                        showToast("삭제되었습니다.");
+                    }
+                } catch (e) { showToast("삭제 실패", "error"); }
+            },
+
+            // [Fix] No render on editor inputs
+            updateViewData: (f, v) => setState(s => s.viewData[f] = v, false),
+            updatePolicy: (f, v) => setState(s => { if (!s.viewData.policies) s.viewData.policies = {}; s.viewData.policies[f] = v; }, false),
+            addOption: () => setState(s => { if (!s.viewData.pricingOptions) s.viewData.pricingOptions = []; s.viewData.pricingOptions.push({ id: Date.now(), name: '', price: 0, unit: '1인' }); }),
+            removeOption: (i) => setState(s => s.viewData.pricingOptions.splice(i, 1)),
+            updateOption: (i, f, v) => setState(s => s.viewData.pricingOptions[i][f] = v, false),
+
+            addFaq: () => setState(s => { if (!s.viewData.faq) s.viewData.faq = []; s.viewData.faq.push({ q: '', a: '' }); }),
+            removeFaq: (i) => setState(s => s.viewData.faq.splice(i, 1)),
+            updateFaq: (i, f, v) => setState(s => s.viewData.faq[i][f] = v, false),
+
+            addInputField: () => setState(s => { if (!s.viewData.inputFields) s.viewData.inputFields = []; s.viewData.inputFields.push({ label: '', value: '' }); }),
+            removeInputField: (i) => setState(s => s.viewData.inputFields.splice(i, 1)),
+            updateInputField: (i, f, v) => setState(s => s.viewData.inputFields[i][f] = v, false),
+
+            setCategory: (c) => setState(s => s.selectedCategory = c),
+            updateSearch: (v) => {
+                state.searchQuery = v;
+                debounceRender();
+            },
+            toggleSort: () => setState(s => { s.sortMode = s.sortMode === 'recommend' ? 'price_asc' : 'recommend'; showToast(s.sortMode === 'price_asc' ? "최저가순" : "추천순"); }),
+            initializeSampleData: async () => {
+                if (!confirm("샘플 상품 데이터를 추가하시겠습니까?")) return;
+                const colRef = collection(db, COL_PRODUCTS);
+                for (const item of INITIAL_SAMPLE_DATA) {
+                    const { id, ...data } = item;
+                    await addDoc(colRef, { ...data, createdAt: serverTimestamp() });
+                }
+                showToast("상품 데이터 추가 완료");
+            },
+
+            // [New] Editor Region Selection Actions
+            updateEditorRegionSearch: (val) => {
+                // [FIXED] 자동 완성을 위해 debounceRender 호출
+                state.editorRegionSearch = val;
+                debounceRender();
+            },
+            selectEditorRegion: (regionId) => {
+                setState(s => {
+                    s.viewData.region = regionId;
+                    s.editorRegionSearch = "";
+                });
+            },
+            clearEditorRegion: () => {
+                setState(s => {
+                    s.viewData.region = "";
+                    s.editorRegionSearch = "";
+                });
+            }
+        };
+
+        // ... (renderHome, renderRegionList, renderProductList, renderDetail, renderAdminDashboard 생략) ...
+        function renderHome() {
+            const activeCountries = state.countries.filter(c => state.isAdmin || getCountryProductCount(c.id) > 0);
+
+            const countryItems = activeCountries.map(c => {
+                const count = getCountryProductCount(c.id);
+                const isEmpty = count === 0;
+                return `
+                <div onclick="actions.selectCountry('${c.id}')" class="flex items-center gap-4 bg-white p-5 rounded-2xl cursor-pointer hover:shadow-lg transition-all duration-300 border border-transparent hover:border-primary/20 group ${isEmpty ? 'opacity-50 border-dashed border-gray-300 bg-gray-50' : ''}">
+                    <div class="flex items-center justify-center rounded-xl bg-gray-100 shrink-0 size-14 text-3xl">
+                        ${c.icon}
+                    </div>
+                    <div class="flex flex-col justify-center flex-1">
+                        <p class="text-text-primary text-lg font-bold leading-tight flex items-center gap-2">
+                            ${c.name} 
+                            <span class="text-sm font-normal text-gray-400 ml-1">${c.nameEn}</span>
+                            ${isEmpty ? '<span class="text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">준비중</span>' : ''}
+                        </p>
+                        <!-- 설명 제거됨 -->
+                    </div>
+                    <div class="shrink-0 text-gray-300 group-hover:text-primary transition-colors">
+                        <span class="material-symbols-outlined text-2xl">chevron_right</span>
+                    </div>
+                </div>
+            `}).join('');
+
+            return `
+                <header class="flex items-center bg-background-light p-4 sticky top-0 z-10 justify-between">
+                    <div class="flex-1 flex justify-center">
+                        <img src="${LOGO_IMAGE_URL}" alt="Local Station Logo" class="h-8 object-contain">
+                    </div>
+                    <div class="flex items-center gap-2 absolute right-4">
+                        ${state.isAdmin ? `<button onclick="actions.goAdminDashboard()" class="text-xs font-bold text-white bg-primary px-3 py-1.5 rounded-full shadow-sm hover:bg-teal-600 transition-colors">대시보드</button>` : ''}
+                        <button onclick="actions.toggleAdminMode()" class="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors">
+                            ${state.isAdmin ? '로그아웃' : '관리자모드'}
+                        </button>
+                    </div>
+                </header>
+                
+                <div class="w-full flex justify-center my-2">
+                    <img src="${BANNER_IMAGE_URL}" alt="Banner" class="max-w-[200px] h-auto object-contain">
+                </div>
+
+                <main class="flex flex-col px-4 pt-6 pb-24 animate-fade-in">
+                    <section class="mb-8">
+                        <!-- [변경] 요청하신 문구로 수정 -->
+                        <h2 class="text-text-primary tracking-tight text-[26px] font-bold leading-tight text-left pb-2">"항공과 호텔, 그 다음 준비는?"</h2>
+                        <p class="text-text-secondary text-sm font-normal leading-relaxed">
+                            당신의 자유여행을 꽉 채워줄 현지 투어와 티켓, 여기서 간편하게 확인하세요.
+                        </p>
+                    </section>
+                    <section class="flex flex-col gap-3">
+                        ${state.countries.length === 0 ? `<div class="text-center py-20 text-gray-400">데이터 로딩 중이거나<br>등록된 국가가 없습니다.</div>` : countryItems}
+                        ${state.countries.length > 0 && activeCountries.length === 0 ? `<div class="text-center py-10 text-gray-400">등록된 상품이 없습니다.<br>관리자 대시보드에서 데이터를 확인하세요.</div>` : ''}
+                    </section>
+                    
+                    <!-- [NEW] Bottom Banner Image -->
+                    <div class="mt-6 w-full">
+                        <img src="https://www.naeiltour.co.kr/images/web/Gemini_Generated_Image_7d7dnb7d7dnb7d7d.png" alt="Event Banner" class="w-full h-auto object-cover rounded-lg shadow-sm">
+                    </div>
+                </main>
+            `;
+        }
+
+        function renderRegionList() {
+            const country = state.countries.find(c => c.id === state.selectedCountry) || { name: '국가' };
+            const regions = state.regions.filter(r => r.countryId === state.selectedCountry && (state.isAdmin || getRegionProductCount(r.id) > 0));
+
+            const regionItems = regions.length === 0 ?
+                `<div class="text-center py-20 text-gray-400 flex flex-col items-center gap-2">
+                    <span class="material-symbols-outlined text-4xl opacity-30">map</span>
+                    <span>현재 오픈된 지역이 없습니다.</span>
+                    ${state.isAdmin ? '<span class="text-xs text-primary">관리자는 대시보드에서<br>새 지역을 추가할 수 있습니다.</span>' : ''}
+                </div>` :
+                regions.map(r => {
+                    const count = getRegionProductCount(r.id);
+                    const isEmpty = count === 0;
+                    return `
+                    <div onclick="actions.selectRegion('${r.id}')" class="flex items-center gap-4 bg-white p-4 min-h-[72px] justify-between rounded-xl cursor-pointer hover:shadow-lg transition-all duration-300 border border-transparent hover:border-primary/20 ${isEmpty ? 'opacity-60 bg-gray-50' : ''}">
+                        <div class="flex items-center gap-4">
+                            <div class="text-text-primary flex items-center justify-center rounded-lg bg-gray-100 shrink-0 size-12">
+                                <span class="material-symbols-outlined text-2xl">location_on</span>
+                            </div>
+                            <div class="flex flex-col justify-center">
+                                <div class="flex items-center gap-2">
+                                    <p class="text-text-primary text-base font-bold leading-normal line-clamp-1">${r.name} <span class="text-xs font-normal text-gray-400">${r.nameEn}</span></p>
+                                    ${r.badge ? `<span class="text-[10px] font-bold text-white bg-accent px-2 py-0.5 rounded-full">${r.badge}</span>` : ''}
+                                    ${isEmpty ? '<span class="text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">준비중</span>' : ''}
+                                </div>
+                                <!-- 설명 제거됨 -->
+                            </div>
+                        </div>
+                        <div class="shrink-0 text-text-secondary">
+                            <span class="material-symbols-outlined text-2xl">chevron_right</span>
+                        </div>
+                    </div>
+                `}).join('');
+
+            return `
+                <div class="sticky top-0 z-20 flex flex-col bg-background-light/90 backdrop-blur-sm">
+                    <div class="flex items-center p-4">
+                        <button onclick="actions.back()" class="mr-2 text-text-primary p-1 hover:bg-gray-200 rounded-full transition-colors"><span class="material-symbols-outlined">arrow_back</span></button>
+                        <h1 class="text-text-primary text-xl font-bold flex-1">${country.name}</h1>
+                        <div class="w-8"></div>
+                    </div>
+                </div>
+                <main class="flex flex-col px-4 pt-2 pb-24 animate-fade-in">
+                    <h2 class="text-lg font-bold text-text-primary mb-4 px-1">지역을 선택하세요</h2>
+                    <section class="flex flex-col gap-3">
+                        ${regionItems}
+                    </section>
+                </main>
+            `;
+        }
+        function renderProductList() {
+            const region = state.regions.find(r => r.id === state.selectedRegion) || { name: '전체 보기' };
+
+            let filtered = state.products.filter(p => {
+                const pRegion = p.region || 'phuquoc';
+                return pRegion === state.selectedRegion;
+            });
+
+            const categories = ['전체', ...new Set(filtered.map(p => p.category).filter(Boolean))];
+            filtered = filtered.filter(p => {
+                const matchSearch = p.productName.toLowerCase().includes(state.searchQuery.toLowerCase());
+                const matchCat = state.selectedCategory === '전체' || p.category === state.selectedCategory;
+                return matchSearch && matchCat;
+            });
+
+            if (state.sortMode === 'price_asc') {
+                filtered.sort((a, b) => getMinPrice(a) - getMinPrice(b));
+            }
+
+            const productCards = filtered.length === 0 ?
+                `<div class="col-span-full text-center py-20 text-gray-400 flex flex-col items-center gap-2">
+                    <span class="material-symbols-outlined text-4xl opacity-50">sentiment_dissatisfied</span>
+                    <span>등록된 상품이 없습니다.</span>
+                </div>` :
+                filtered.map(p => {
+                    const minPrice = getMinPrice(p);
+                    const priceStr = minPrice === Infinity ? '가격 문의' : `₩${formatCurrency(minPrice)}`;
+                    return `
+                    <div class="flex flex-col items-stretch justify-start rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all cursor-pointer group" onclick="actions.selectProduct('${p.id}')">
+                        <div class="relative w-full">
+                            <div class="w-full bg-center bg-no-repeat aspect-[16/9] bg-cover group-hover:scale-105 transition-transform duration-500" 
+                                 style="background-image: url('${p.heroImage}');" onerror="this.style.backgroundColor='#eee'"></div>
+                            <div class="absolute top-3 left-3 bg-black/40 backdrop-blur-sm rounded-md px-2 py-1">
+                                <p class="text-white text-xs font-bold uppercase tracking-wide">${p.category || '기본'}</p>
+                            </div>
+                        </div>
+                        <div class="flex w-full grow flex-col items-stretch justify-center gap-2 p-4">
+                            <p class="text-text-primary text-lg font-bold leading-tight tracking-[-0.015em] line-clamp-2">${p.productName}</p>
+                            <div class="flex items-center gap-3 justify-between mt-2">
+                                <p class="text-text-secondary text-base font-normal leading-normal">${priceStr} ${minPrice !== Infinity ? '/ 인' : ''}</p>
+                                <button class="flex min-w-[84px] items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold gap-2">
+                                    <span>상세보기</span>
+                                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+            const categoryChips = categories.map(cat => `
+                <button onclick="actions.setCategory('${cat}')" class="flex h-10 shrink-0 items-center justify-center px-4 rounded-lg transition-colors ${state.selectedCategory === cat ? 'bg-primary text-white font-bold' : 'bg-white text-text-primary font-medium'}">
+                    ${cat}
+                </button>
+            `).join('');
+
+            return `
+                <div class="sticky top-0 z-20 flex flex-col bg-background-light/90 backdrop-blur-sm">
+                    <div class="flex items-center p-4">
+                        <button onclick="actions.back()" class="mr-2 text-text-primary p-1 hover:bg-gray-200 rounded-full transition-colors"><span class="material-symbols-outlined">arrow_back</span></button>
+                        <h1 class="text-text-primary text-xl font-bold flex-1">${region.name}</h1>
+                        <div class="flex items-center gap-2">
+                             ${state.isAdmin ? `<span class="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">관리자 ON</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="px-4 py-3 flex gap-3 items-center">
+                        <div class="flex w-full flex-1 items-center bg-white rounded-xl h-12 px-3 shadow-sm">
+                            <span class="material-symbols-outlined text-gray-400 text-2xl mr-2">search</span>
+                            <input class="flex-1 bg-transparent outline-none text-text-primary placeholder-gray-400" 
+                                placeholder="상품 검색..." 
+                                value="${state.searchQuery}"
+                                oninput="actions.updateSearch(this.value)" />
+                        </div>
+                        <button onclick="actions.toggleSort()" class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-text-primary shadow-sm relative">
+                            <span class="material-symbols-outlined text-2xl">tune</span>
+                            ${state.sortMode === 'price_asc' ? '<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>' : ''}
+                        </button>
+                    </div>
+                    <div class="flex gap-3 px-4 pb-4 overflow-x-auto no-scrollbar">
+                        ${categoryChips}
+                    </div>
+                </div>
+                <div class="flex flex-col gap-4 px-4 pb-24 animate-fade-in">
+                    ${productCards}
+                </div>
+                ${state.isAdmin ? `
+                <div class="fixed bottom-6 right-6 z-20">
+                    <button onclick="actions.addProduct()" class="flex h-14 items-center justify-center gap-2 rounded-full bg-primary pl-5 pr-6 text-white shadow-lg hover:bg-teal-600 transition-colors">
+                        <span class="material-symbols-outlined text-3xl">add</span>
+                        <span class="text-base font-bold">상품 추가</span>
+                    </button>
+                </div>` : ''}
+            `;
+        }
+        function renderDetail() {
+            const vd = state.viewData;
+            if (!vd) return '';
+
+            const minPrice = getMinPrice(vd);
+            const priceDisplay = minPrice === Infinity ? "문의" : `₩${formatCurrency(minPrice)}`;
+            const priceList = (vd.pricingOptions || []).map(opt => `
+                <div class="flex justify-between items-center bg-secondary rounded-lg p-4">
+                    <div>
+                        <p class="text-text-primary font-medium">${opt.name}</p>
+                        ${opt.unit ? `<p class="text-xs text-text-secondary">${opt.unit}</p>` : ''}
+                        ${opt.desc ? `<p class="text-xs text-gray-500 mt-1">${opt.desc}</p>` : ''}
+                    </div>
+                    <p class="text-text-primary font-bold text-lg">₩${formatCurrency(opt.price)}</p>
+                </div>
+            `).join('');
+
+            const faqList = (vd.faq || []).map(f => `
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <p class="font-bold text-primary mb-1">Q. ${f.q}</p>
+                    <p class="text-sm text-gray-600">A. ${f.a}</p>
+                </div>
+            `).join('');
+
+            const inputFields = (vd.inputFields || []).map(f => `
+                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                     <p class="text-xs font-bold text-gray-500 mb-1">${f.label}</p>
+                     <p class="text-sm text-gray-800">${f.value}</p>
+                </div>
+            `).join('');
+
+            let tabContent = '';
+            if (state.activeTab === 'info') {
+                tabContent = `
+                    <div class="space-y-4">
+                        ${inputFields ? `<div class="grid grid-cols-2 gap-2">${inputFields}</div>` : ''}
+                        <div>
+                            <h3 class="text-lg font-bold text-text-primary mb-2">자세한 설명</h3>
+                            <p class="text-text-secondary leading-relaxed whitespace-pre-line">${vd.description}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (state.activeTab === 'policy') {
+                tabContent = `
+                    <div>
+                        <h3 class="text-lg font-bold text-text-primary mb-3">기타사항</h3>
+                        <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg">
+                            <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line">${vd.policies?.cancellation || '특별한 유의사항이 없습니다.'}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (state.activeTab === 'faq') {
+                tabContent = `
+                    <div>
+                        <h3 class="text-lg font-bold text-text-primary mb-3">FAQ</h3>
+                        <div class="space-y-3">
+                            ${faqList.length > 0 ? faqList : '<p class="text-sm text-gray-400">등록된 FAQ가 없습니다.</p>'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light">
+                    <div class="relative w-full h-[320px]">
+                        <div class="w-full h-full bg-center bg-cover" style="background-image: url('${vd.heroImage}');"></div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                        <div class="absolute top-0 left-0 right-0 flex items-center p-4 pt-6 z-10">
+                            <button onclick="actions.back()" class="size-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30">
+                                <span class="material-symbols-outlined">arrow_back</span>
+                            </button>
+                            <div class="flex-1"></div>
+                            ${state.isAdmin ? `
+                                <button onclick="actions.editProduct()" class="size-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white mr-2 hover:bg-white/30"><span class="material-symbols-outlined">edit</span></button>
+                                <button onclick="actions.initiateDelete(event, '${vd.id}')" class="size-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-red-400 hover:bg-white/30"><span class="material-symbols-outlined">delete</span></button>
+                            ` : ''}
+                        </div>
+                        <div class="absolute bottom-0 left-0 right-0 p-6 text-white">
+                            <h1 class="text-2xl font-bold leading-tight mb-2 shadow-sm">${vd.productName}</h1>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-5 border-b border-gray-100">
+                         <h3 class="font-bold text-primary flex items-center gap-2"><span class="material-symbols-outlined">payments</span> 상품 요금표</h3>
+                         <div class="space-y-3">${priceList}</div>
+                    </div>
+
+                    <div class="sticky top-0 bg-white z-20 border-b border-gray-200 flex text-sm font-bold text-gray-500">
+                        <button onclick="actions.setTab('info')" class="flex-1 py-4 border-b-2 transition-colors ${state.activeTab === 'info' ? 'border-primary text-primary' : 'border-transparent hover:text-gray-800'}">상세 정보</button>
+                        <button onclick="actions.setTab('policy')" class="flex-1 py-4 border-b-2 transition-colors ${state.activeTab === 'policy' ? 'border-primary text-primary' : 'border-transparent hover:text-gray-800'}">기타사항</button>
+                        <button onclick="actions.setTab('faq')" class="flex-1 py-4 border-b-2 transition-colors ${state.activeTab === 'faq' ? 'border-primary text-primary' : 'border-transparent hover:text-gray-800'}">FAQ</button>
+                    </div>
+
+                    <div class="p-6 pb-10 min-h-[300px] bg-white">
+                        ${tabContent}
+                    </div>
+                    
+                    <!-- [Deleted] Bottom Bar -->
+                </div>
+            `;
+        }
+
+        function renderEditor() {
+            const vd = state.viewData;
+
+            // Prepare region search data
+            let filteredRegions = [];
+            const currentRegionName = state.regions.find(r => r.id === vd.region)?.name;
+            const currentRegionNameEn = state.regions.find(r => r.id === vd.region)?.nameEn;
+            const currentCountry = state.countries.find(c => c.id === state.regions.find(r => r.id === vd.region)?.countryId);
+            const currentRegionDisplay = currentRegionName ? `[${currentCountry?.name || '?'}] ${currentRegionName} (${currentRegionNameEn})` : '';
+
+            if (!vd.region) {
+                // [FIX] 검색어가 있을 때만 필터링하여 결과 보여주기
+                const query = state.editorRegionSearch.trim().toLowerCase();
+                if (query) {
+                    filteredRegions = state.regions.filter(r => {
+                        const country = state.countries.find(c => c.id === r.countryId);
+                        return r.name.toLowerCase().includes(query) ||
+                            r.nameEn.toLowerCase().includes(query) ||
+                            (country && country.name.toLowerCase().includes(query));
+                    }).slice(0, 5); // Limit to 5 suggestions
+                }
+            }
+
+            return `
+                <div class="min-h-screen bg-gray-50 p-4 pb-20">
+                    <div class="sticky top-0 bg-gray-50 z-10 flex justify-between items-center py-4 mb-4 border-b">
+                        <h2 class="text-xl font-bold">상품 ${state.isNewProduct ? '등록' : '수정'}</h2>
+                        <div class="flex gap-2">
+                            <button onclick="actions.back()" class="px-4 py-2 bg-gray-200 rounded-lg text-sm font-bold">취소</button>
+                            <button onclick="actions.saveProduct()" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold">저장</button>
+                        </div>
+                    </div>
+                    <form class="space-y-6 max-w-2xl mx-auto" onsubmit="event.preventDefault()">
+                        
+                        <!-- Basic Info -->
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 space-y-4">
+                            <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">기본 정보</h3>
+                            
+                            <!-- [Updated] Region Selection: Search & Select -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">지역 선택</label>
+                                ${vd.region ? `
+                                    <div class="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                                        <span class="text-sm font-bold text-gray-700">${currentRegionDisplay}</span>
+                                        <button onclick="actions.clearEditorRegion()" class="text-gray-400 hover:text-red-500">
+                                            <span class="material-symbols-outlined text-sm">close</span>
+                                        </button>
+                                    </div>
+                                ` : `
+                                    <div class="relative">
+                                        <input id="editor-region-search" class="w-full p-3 border rounded-lg text-sm focus:border-primary outline-none" 
+                                            placeholder="지역 검색 (예: 다낭)" 
+                                            value="${state.editorRegionSearch}"
+                                            oninput="actions.updateEditorRegionSearch(this.value)">
+                                        
+                                        ${filteredRegions.length > 0 ? `
+                                        <div class="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                            ${filteredRegions.map(r => {
+                const c = state.countries.find(cnt => cnt.id === r.countryId);
+                return `
+                                                <div onclick="actions.selectEditorRegion('${r.id}')" class="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-0">
+                                                    <div class="text-sm font-bold text-gray-800">${r.name} <span class="text-xs font-normal text-gray-500">(${r.nameEn})</span></div>
+                                                    <div class="text-xs text-gray-400">${c?.name || '국가미지정'}</div>
+                                                </div>
+                                                `;
+            }).join('')}
+                                        </div>
+                                        ` : (state.editorRegionSearch.trim() ? `<div class="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg p-3 text-xs text-gray-400">검색 결과 없음</div>` : '')}
+                                    </div>
+                                `}
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">상품명</label>
+                                <input type="text" value="${vd.productName}" oninput="actions.updateViewData('productName', this.value)" class="w-full p-3 rounded-lg border border-gray-300">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">카테고리</label>
+                                    <input type="text" value="${vd.category}" oninput="actions.updateViewData('category', this.value)" class="w-full p-3 rounded-lg border border-gray-300">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">우선순위</label>
+                                    <input type="number" value="${vd.priority}" oninput="actions.updateViewData('priority', Number(this.value))" class="w-full p-3 rounded-lg border border-gray-300">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">이미지 URL</label>
+                                <input type="text" value="${vd.heroImage}" oninput="actions.updateViewData('heroImage', this.value)" class="w-full p-3 rounded-lg border border-gray-300 text-xs font-mono">
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="bg-white p-4 rounded-xl border border-gray-200">
+                            <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">상세 설명</h3>
+                            <textarea rows="5" oninput="actions.updateViewData('description', this.value)" class="w-full p-3 rounded-lg border border-gray-300">${vd.description}</textarea>
+                            
+                            <!-- [New] Input Fields Area -->
+                            <div class="mt-4 border-t pt-4">
+                                <div class="flex justify-between mb-2 items-center">
+                                    <h4 class="text-sm font-bold text-gray-600">입력 필드 1,2,3 (Input Fields)</h4>
+                                    <button onclick="actions.addInputField()" class="text-xs bg-gray-100 px-2 py-1 rounded">+ 추가</button>
+                                </div>
+                                ${(vd.inputFields || []).map((f, i) => `
+                                    <div class="flex gap-2 mb-2">
+                                        <input placeholder="라벨 (예: 픽업 시간)" value="${f.label}" oninput="actions.updateInputField(${i}, 'label', this.value)" class="w-1/3 p-2 border rounded text-xs font-bold">
+                                        <input placeholder="내용 (예: 09:00)" value="${f.value}" oninput="actions.updateInputField(${i}, 'value', this.value)" class="flex-1 p-2 border rounded text-xs">
+                                        <button onclick="actions.removeInputField(${i})" class="text-red-400"><span class="material-symbols-outlined text-sm">close</span></button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Policies -->
+                        <div class="bg-white p-4 rounded-xl border border-gray-200">
+                            <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">기타사항 (정책)</h3>
+                            <textarea rows="3" oninput="actions.updatePolicy('cancellation', this.value)" class="w-full p-3 rounded-lg border border-gray-300 placeholder-gray-300" placeholder="취소 규정이나 유의사항을 입력하세요.">${vd.policies?.cancellation || ''}</textarea>
+                        </div>
+
+                        <!-- Pricing -->
+                        <div class="bg-white p-4 rounded-xl border border-gray-200">
+                            <div class="flex justify-between mb-3 items-center border-b pb-2">
+                                <h3 class="font-bold text-gray-800">요금 옵션</h3>
+                                <button onclick="actions.addOption()" class="text-xs bg-primary/10 text-primary px-2 py-1 rounded font-bold">+ 추가</button>
+                            </div>
+                            ${(vd.pricingOptions || []).map((opt, i) => `
+                                <div class="bg-gray-50 p-3 rounded-lg mb-2 border border-gray-200 relative">
+                                    <button onclick="actions.removeOption(${i})" class="absolute top-2 right-2 text-gray-400 hover:text-red-500"><span class="material-symbols-outlined text-sm">close</span></button>
+                                    <div class="flex gap-2 mb-2">
+                                        <input placeholder="옵션명 (예: 승용차)" value="${opt.name}" oninput="actions.updateOption(${i}, 'name', this.value)" class="flex-1 p-2 border rounded text-sm">
+                                        <input type="number" placeholder="가격" value="${opt.price}" oninput="actions.updateOption(${i}, 'price', this.value)" class="w-24 p-2 border rounded text-sm text-right">
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <input placeholder="단위 (예: 1대)" value="${opt.unit}" oninput="actions.updateOption(${i}, 'unit', this.value)" class="w-1/4 p-2 border rounded text-xs text-center">
+                                        <input placeholder="설명 (예: 4인 탑승 가능)" value="${opt.desc}" oninput="actions.updateOption(${i}, 'desc', this.value)" class="flex-1 p-2 border rounded text-xs">
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- FAQ -->
+                        <div class="bg-white p-4 rounded-xl border border-gray-200">
+                            <div class="flex justify-between mb-3 items-center border-b pb-2">
+                                <h3 class="font-bold text-gray-800">FAQ (자주 묻는 질문)</h3>
+                                <button onclick="actions.addFaq()" class="text-xs bg-primary/10 text-primary px-2 py-1 rounded font-bold">+ 추가</button>
+                            </div>
+                            ${(vd.faq || []).map((f, i) => `
+                                <div class="bg-gray-50 p-3 rounded-lg mb-2 border border-gray-200 relative">
+                                    <button onclick="actions.removeFaq(${i})" class="absolute top-2 right-2 text-gray-400 hover:text-red-500"><span class="material-symbols-outlined text-sm">close</span></button>
+                                    <div class="space-y-2 pr-6">
+                                        <input placeholder="질문 (Q)" value="${f.q}" oninput="actions.updateFaq(${i}, 'q', this.value)" class="w-full p-2 border rounded text-sm font-bold">
+                                        <textarea placeholder="답변 (A)" rows="2" oninput="actions.updateFaq(${i}, 'a', this.value)" class="w-full p-2 border rounded text-sm text-gray-600">${f.a}</textarea>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                    </form>
+                </div>
+            `;
+        }
+
+        function renderAdminDashboard() {
+            const totalProducts = state.products.length;
+
+            let content = '';
+
+            if (state.adminTab === 'products') {
+                let filtered = state.products.filter(p => {
+                    const matchSearch = p.productName.toLowerCase().includes(state.searchQuery.toLowerCase());
+                    const matchCat = state.selectedCategory === '전체' || p.category === state.selectedCategory;
+                    return matchSearch && matchCat;
+                });
+
+                const productRows = filtered.map(p => {
+                    const r = state.regions.find(reg => reg.id === (p.region || 'phuquoc'));
+                    const c = state.countries.find(cnt => cnt.id === r?.countryId);
+                    return `
+                    <div class="bg-white p-4 rounded-xl border border-gray-100 flex items-center justify-between gap-4 hover:shadow-sm transition-shadow">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <img src="${p.heroImage}" class="w-12 h-12 rounded-lg object-cover bg-gray-200 shrink-0">
+                            <div class="min-w-0">
+                                <p class="font-bold text-gray-800 text-sm truncate">${p.productName}</p>
+                                <p class="text-xs text-gray-500 truncate">${c?.name || '-'} > ${r?.name || '-'}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            <button onclick="actions.editProduct('${p.id}')" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><span class="material-symbols-outlined text-lg">edit</span></button>
+                            <button onclick="actions.initiateDelete(event, '${p.id}')" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><span class="material-symbols-outlined text-lg">delete</span></button>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+
+                content = `
+                    <div class="mb-4">
+                        <input id="dash-search" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary" 
+                            placeholder="상품명 검색..." 
+                            value="${state.searchQuery}"
+                            oninput="actions.updateSearch(this.value)" />
+                    </div>
+                    <div class="space-y-3">
+                        ${productRows.length > 0 ? productRows : '<div class="text-center py-10 text-gray-400">상품이 없습니다.</div>'}
+                    </div>
+                `;
+            } else if (state.adminTab === 'regions') {
+                const regionRows = state.regions.map(r => {
+                    const c = state.countries.find(cnt => cnt.id === r.countryId);
+                    return `
+                    <div class="bg-white p-4 rounded-xl border border-gray-100 flex items-center justify-between gap-4 hover:shadow-sm transition-shadow">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-gray-800">${r.name} <span class="text-xs text-gray-400 font-normal">${r.nameEn}</span></span>
+                            <span class="text-xs text-gray-500">${c?.name || '국가미지정'}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="actions.openEditRegionModal('${r.id}')" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><span class="material-symbols-outlined text-lg">edit</span></button>
+                            <button onclick="actions.deleteRegion('${r.id}')" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><span class="material-symbols-outlined text-lg">delete</span></button>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+
+                content = `
+                    <div class="flex justify-end mb-4">
+                        <button onclick="actions.openAddRegionModal()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">add</span> 지역 추가
+                        </button>
+                    </div>
+                    <div class="space-y-3">
+                        ${regionRows.length > 0 ? regionRows : '<div class="text-center py-10 text-gray-400">등록된 지역이 없습니다.</div>'}
+                    </div>
+                `;
+            } else {
+                // [NEW] Countries Tab
+                const countryRows = state.countries.map(c => {
+                    const regionCount = state.regions.filter(r => r.countryId === c.id).length;
+                    return `
+                    <div class="bg-white p-4 rounded-xl border border-gray-100 flex items-center justify-between gap-4 hover:shadow-sm transition-shadow">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${c.icon || '✈️'}</span>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-gray-800">${c.name} <span class="text-xs text-gray-400 font-normal">${c.nameEn}</span></span>
+                                <span class="text-xs text-gray-500">지역 ${regionCount}개</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="actions.openEditCountryModal('${c.id}')" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"><span class="material-symbols-outlined text-lg">edit</span></button>
+                            <button onclick="actions.deleteCountry('${c.id}')" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><span class="material-symbols-outlined text-lg">delete</span></button>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+
+                content = `
+                    <div class="flex justify-end mb-4">
+                        <button onclick="actions.openAddCountryModal()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">add</span> 국가 추가
+                        </button>
+                    </div>
+                    <div class="space-y-3">
+                        ${countryRows.length > 0 ? countryRows : '<div class="text-center py-10 text-gray-400">등록된 국가가 없습니다.</div>'}
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="min-h-screen bg-gray-50 pb-20 relative">
+                    <header class="bg-white border-b sticky top-0 z-20 px-4 py-3 flex items-center justify-between">
+                        <h2 class="font-bold text-lg flex items-center gap-2"><span class="material-symbols-outlined text-primary">dashboard</span> 관리자 대시보드</h2>
+                        <button onclick="actions.goHome()" class="text-sm text-gray-500 hover:text-gray-800 font-medium">나가기</button>
+                    </header>
+                    
+                    <div class="p-4 space-y-6 max-w-3xl mx-auto">
+                        <!-- Stats -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                                <p class="text-xs text-gray-400 font-medium mb-1">총 상품 수</p>
+                                <p class="text-2xl font-bold text-gray-800">${totalProducts}개</p>
+                            </div>
+                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                                <p class="text-xs text-gray-400 font-medium mb-1">지역/국가</p>
+                                <p class="text-2xl font-bold text-primary">${state.regions.length} / ${state.countries.length}</p>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex gap-2">
+                            <button onclick="actions.addProduct()" class="flex-1 bg-primary text-white py-3 rounded-xl font-bold shadow-lg shadow-primary/30 flex items-center justify-center gap-2 hover:bg-teal-600 transition">
+                                <span class="material-symbols-outlined">add_circle</span> 상품 등록
+                            </button>
+                            ${state.countries.length === 0 ? `
+                            <button onclick="actions.initializeMetadata()" class="flex-none bg-orange-100 text-orange-700 px-4 rounded-xl border border-orange-200 font-bold hover:bg-orange-200">
+                                기초 데이터 생성 (필수)
+                            </button>` : ''}
+                            <button onclick="actions.initializeSampleData()" class="flex-none bg-white text-gray-600 px-4 rounded-xl border border-gray-200 font-medium hover:bg-gray-50">
+                                상품 샘플 추가
+                            </button>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div class="flex border-b border-gray-200">
+                            <button onclick="actions.setAdminTab('products')" class="flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${state.adminTab === 'products' ? 'border-primary text-primary' : 'border-transparent text-gray-400'}">상품 관리</button>
+                            <button onclick="actions.setAdminTab('regions')" class="flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${state.adminTab === 'regions' ? 'border-primary text-primary' : 'border-transparent text-gray-400'}">지역 관리</button>
+                            <button onclick="actions.setAdminTab('countries')" class="flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${state.adminTab === 'countries' ? 'border-primary text-primary' : 'border-transparent text-gray-400'}">국가 관리</button>
+                        </div>
+
+                        <!-- Content -->
+                        <div>
+                            ${content}
+                        </div>
+                    </div>
+
+                    <!-- Add/Edit Region Modal -->
+                    ${state.isAddingRegion ? `
+                    <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4 backdrop-blur-sm animate-fade-in">
+                        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                            <h3 class="font-bold text-lg mb-4">${state.editingRegionId ? '지역 수정' : '새 지역 추가'}</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">국가 선택</label>
+                                    <select id="reg-country" onchange="actions.updateNewRegionData('countryId', this.value)" class="w-full p-2 border rounded">
+                                        ${state.countries.map(c => `<option value="${c.id}" ${state.newRegionData.countryId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <input id="reg-name" class="w-full p-2 border rounded text-sm" 
+                                    value="${state.newRegionData.name}"
+                                    placeholder="지역명 (예: 다낭)" 
+                                    oninput="actions.updateNewRegionData('name', this.value)">
+                                <input id="reg-en" class="w-full p-2 border rounded text-sm" 
+                                    value="${state.newRegionData.nameEn}"
+                                    placeholder="영문명 (예: Da Nang)" 
+                                    oninput="actions.updateNewRegionData('nameEn', this.value)">
+                                <!-- 설명(sub) 필드 제거됨 -->
+                            </div>
+                            <div class="flex gap-2 mt-6">
+                                <button onclick="actions.closeAddRegionModal()" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm">취소</button>
+                                <button onclick="actions.saveNewRegion()" class="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm">${state.editingRegionId ? '수정' : '추가'}</button>
+                            </div>
+                        </div>
+                    </div>` : ''}
+
+                    <!-- Add/Edit Country Modal -->
+                    ${state.isAddingCountry ? `
+                    <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4 backdrop-blur-sm animate-fade-in">
+                        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                            <h3 class="font-bold text-lg mb-4">${state.editingCountryId ? '국가 수정' : '새 국가 추가'}</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">국가 아이콘 (이모지)</label>
+                                    <input id="cnt-icon" class="w-full p-2 border rounded text-sm text-center text-2xl" 
+                                        value="${state.newCountryData.icon}"
+                                        oninput="actions.updateNewCountryData('icon', this.value)">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">국가명</label>
+                                    <input id="cnt-name" class="w-full p-2 border rounded text-sm" 
+                                        value="${state.newCountryData.name}"
+                                        placeholder="예: 일본" 
+                                        oninput="actions.updateNewCountryData('name', this.value)">
+                                </div>
+                                    
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">영문명 (ID로 사용됨)</label>
+                                    <input id="cnt-en" class="w-full p-2 border rounded text-sm" 
+                                        value="${state.newCountryData.nameEn}"
+                                        placeholder="예: Japan" 
+                                        oninput="actions.updateNewCountryData('nameEn', this.value)">
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-6">
+                                <button onclick="actions.closeAddCountryModal()" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm">취소</button>
+                                <button onclick="actions.saveNewCountry()" class="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm">${state.editingCountryId ? '수정' : '추가'}</button>
+                            </div>
+                        </div>
+                    </div>` : ''}
+                </div>
+            `;
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+
+            // [1] 현재 포커스된 요소와 커서 위치 저장
+            const activeId = document.activeElement?.id;
+            const selectionStart = document.activeElement?.selectionStart;
+            const selectionEnd = document.activeElement?.selectionEnd;
+
+            let mainContent = '';
+            if (state.loading) mainContent = `<div class="h-screen flex flex-col items-center justify-center text-primary"><span class="material-symbols-outlined text-4xl animate-spin-custom">autorenew</span><p class="mt-2 text-sm">로딩중...</p></div>`;
+            else if (state.view === 'home') mainContent = renderHome();
+            else if (state.view === 'region_list') mainContent = renderRegionList();
+            else if (state.view === 'product_list') mainContent = renderProductList();
+            else if (state.view === 'detail') mainContent = renderDetail();
+            else if (state.view === 'admin_dashboard') mainContent = renderAdminDashboard();
+            else if (state.view === 'edit') mainContent = renderEditor();
+
+            const toastHtml = state.toast.show ? `
+                <div class="fixed top-10 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-3 rounded-full shadow-xl text-white text-sm font-bold animate-fade-in flex items-center gap-2 ${state.toast.type === 'error' ? 'bg-red-500' : 'bg-gray-800'}">
+                    <span class="material-symbols-outlined text-lg">${state.toast.type === 'error' ? 'error' : 'check_circle'}</span> ${state.toast.message}
+                </div>` : '';
+
+            const authModal = state.showAuthModal ? `
+                <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] px-4 backdrop-blur-sm">
+                    <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl animate-fade-in">
+                        <h3 class="font-bold text-lg mb-1 text-center">관리자 로그인</h3>
+                        <input type="password" class="w-full p-3 border rounded-xl text-center mb-3 outline-none focus:border-primary" 
+                            autofocus oninput="actions.updatePasswordInput(this.value)" onkeyup="if(event.key==='Enter') actions.handleAdminLogin()">
+                        ${state.loginError ? '<p class="text-red-500 text-xs text-center mb-2">비밀번호 오류</p>' : ''}
+                        <div class="flex gap-2">
+                            <button onclick="actions.toggleAuthModal(false)" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm">취소</button>
+                            <button onclick="actions.handleAdminLogin()" class="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm">확인</button>
+                        </div>
+                    </div>
+                </div>` : '';
+
+            const deleteModal = state.deleteTargetId ? `
+                <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] px-4 backdrop-blur-sm">
+                    <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl text-center animate-fade-in">
+                        <h3 class="font-bold text-lg">삭제하시겠습니까?</h3>
+                        <div class="flex gap-2 mt-4">
+                            <button onclick="actions.cancelDelete()" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 text-sm">취소</button>
+                            <button onclick="actions.executeDelete()" class="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold text-sm">삭제</button>
+                        </div>
+                    </div>
+                </div>` : '';
+
+            app.innerHTML = `${mainContent}${toastHtml}${authModal}${deleteModal}`;
+            lucide.createIcons();
+
+            // [2] 렌더링 후 포커스 및 커서 위치 복구
+            if (activeId) {
+                const el = document.getElementById(activeId);
+                if (el) {
+                    el.focus();
+                    // 입력 요소인 경우 커서 위치 복원
+                    if (el.type === 'text' || el.type === 'search' || el.tagName === 'TEXTAREA') {
+                        try { el.setSelectionRange(selectionStart, selectionEnd); } catch (e) { }
+                    }
+                }
+            }
+        }
+
+        initAuth();
+        subscribeToData(); // [변경] 메타데이터 구독
+        render();
+    </script>
+</body>
+
+</html>
