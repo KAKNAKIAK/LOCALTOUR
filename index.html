@@ -469,9 +469,11 @@
                 }
                 if (state.view === 'region_list') { actions.goHome(); return; }
                 if (state.view === 'edit') {
+                    // [변경] 관리자 모드일 경우, 수정/등록 화면에서 뒤로가기 시 무조건 대시보드로 이동
+                    if (state.isAdmin) { actions.goAdminDashboard(); return; }
+
                     if (state.selectedProductId && state.selectedProductId !== 'temp') actions.selectProduct(state.selectedProductId);
                     else if (state.selectedRegion) actions.selectRegion(state.selectedRegion);
-                    else if (state.isAdmin) actions.goAdminDashboard();
                     else actions.goHome();
                     return;
                 }
