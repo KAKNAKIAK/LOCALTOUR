@@ -852,7 +852,9 @@
                 </div>` :
                 filtered.map(p => {
                     const minPrice = getMinPrice(p);
-                    const priceStr = minPrice === Infinity ? '가격 문의' : `₩${formatCurrency(minPrice)}`;
+                    // [변경] 가격 표시 포맷 변경
+                    const priceStr = minPrice === Infinity ? '가격 문의' : `최저가 ₩${formatCurrency(minPrice)} ~`;
+                    
                     return `
                     <div class="flex flex-col items-stretch justify-start rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all cursor-pointer group" onclick="actions.selectProduct('${p.id}')">
                         <div class="relative w-full">
@@ -865,7 +867,8 @@
                         <div class="flex w-full grow flex-col items-stretch justify-center gap-2 p-4">
                             <p class="text-text-primary text-lg font-bold leading-tight tracking-[-0.015em] line-clamp-2">${escapeHtml(p.productName)}</p>
                             <div class="flex items-center gap-3 justify-between mt-2">
-                                <p class="text-text-secondary text-base font-normal leading-normal">${priceStr} ${minPrice !== Infinity ? '/ 인' : ''}</p>
+                                <!-- [변경] '/ 인' 제거 -->
+                                <p class="text-text-secondary text-base font-normal leading-normal">${priceStr}</p>
                                 <button class="flex min-w-[84px] items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold gap-2">
                                     <span>상세보기</span>
                                     <span class="material-symbols-outlined text-lg">arrow_forward</span>
@@ -1190,7 +1193,16 @@
 
             if (state.adminTab === 'products') {
                 let filtered = state.products.filter(p => {
-                    const matchSearch = p.productName.toLowerCase().includes(state.searchQuery.toLowerCase());
+                    // [변경] 검색 로직 강화: 상품명, 지역명, 국가명 검색
+                    const r = state.regions.find(reg => reg.id === (p.region || 'phuquoc'));
+                    const c = state.countries.find(cnt => cnt.id === r?.countryId);
+                    
+                    const query = state.searchQuery.toLowerCase();
+                    const matchName = p.productName.toLowerCase().includes(query);
+                    const matchRegion = r && r.name.toLowerCase().includes(query);
+                    const matchCountry = c && c.name.toLowerCase().includes(query);
+                    
+                    const matchSearch = matchName || matchRegion || matchCountry;
                     const matchCat = state.selectedCategory === '전체' || p.category === state.selectedCategory;
                     return matchSearch && matchCat;
                 });
@@ -1218,7 +1230,7 @@
                 content = `
                     <div class="mb-4">
                         <input id="dash-search" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary" 
-                            placeholder="상품명 검색..." 
+                            placeholder="상품명, 지역, 국가 검색..." 
                             value="${escapeHtml(state.searchQuery)}"
                             oninput="actions.updateSearch(this.value)" />
                     </div>
@@ -1315,6 +1327,7 @@
                             <button onclick="actions.initializeMetadata()" class="flex-none bg-orange-100 text-orange-700 px-4 rounded-xl border border-orange-200 font-bold hover:bg-orange-200">
                                 기초 데이터 생성 (필수)
                             </button>` : ''}
+                            <!-- [변경] 샘플 추가 버튼 제거됨 -->
                         </div>
 
                         <!-- Tabs -->
