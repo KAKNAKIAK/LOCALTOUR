@@ -1031,10 +1031,19 @@
 
             // Prepare region search data
             let filteredRegions = [];
-            const currentRegionName = state.regions.find(r => r.id === vd.region)?.name;
-            const currentRegionNameEn = state.regions.find(r => r.id === vd.region)?.nameEn;
-            const currentCountry = state.countries.find(c => c.id === state.regions.find(r => r.id === vd.region)?.countryId);
-            const currentRegionDisplay = currentRegionName ? `[${currentCountry?.name || '?'}] ${currentRegionName} (${currentRegionNameEn})` : '';
+            // [변경] 지역 정보 매칭 로직을 더 안전하게 수정 (escapeHtml 적용 및 예외 처리)
+            const matchedRegion = state.regions.find(r => r.id === vd.region);
+            const matchedCountry = matchedRegion ? state.countries.find(c => c.id === matchedRegion.countryId) : null;
+            
+            let currentRegionDisplay = '';
+            if (vd.region) {
+                if (matchedRegion) {
+                    currentRegionDisplay = `[${escapeHtml(matchedCountry?.name || '?')}] ${escapeHtml(matchedRegion.name)} (${escapeHtml(matchedRegion.nameEn)})`;
+                } else {
+                    // 데이터가 없거나 삭제된 경우 ID라도 표시
+                    currentRegionDisplay = `<span class="text-red-400 text-xs">정보 없음 (ID: ${escapeHtml(vd.region)})</span>`;
+                }
+            }
 
             if (!vd.region) {
                 // [FIX] 검색어가 있을 때만 필터링하여 결과 보여주기
@@ -1087,8 +1096,8 @@
                 const c = state.countries.find(cnt => cnt.id === r.countryId);
                 return `
                                                 <div onclick="actions.selectEditorRegion('${r.id}')" class="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-0">
-                                                    <div class="text-sm font-bold text-gray-800">${r.name} <span class="text-xs font-normal text-gray-500">(${r.nameEn})</span></div>
-                                                    <div class="text-xs text-gray-400">${c?.name || '국가미지정'}</div>
+                                                    <div class="text-sm font-bold text-gray-800">${escapeHtml(r.name)} <span class="text-xs font-normal text-gray-500">(${escapeHtml(r.nameEn)})</span></div>
+                                                    <div class="text-xs text-gray-400">${escapeHtml(c?.name || '국가미지정')}</div>
                                                 </div>
                                                 `;
             }).join('')}
