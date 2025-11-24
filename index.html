@@ -236,6 +236,17 @@
             setTimeout(() => { state.toast.show = false; render(); }, 4000);
         }
 
+        // [New] Helper function to escape HTML special characters
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return "";
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         function setState(callback, shouldRender = true) {
             callback(state);
             if (shouldRender) render();
@@ -846,13 +857,13 @@
                     <div class="flex flex-col items-stretch justify-start rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all cursor-pointer group" onclick="actions.selectProduct('${p.id}')">
                         <div class="relative w-full">
                             <div class="w-full bg-center bg-no-repeat aspect-[16/9] bg-cover group-hover:scale-105 transition-transform duration-500" 
-                                 style="background-image: url('${p.heroImage}');" onerror="this.style.backgroundColor='#eee'"></div>
+                                 style="background-image: url('${escapeHtml(p.heroImage)}');" onerror="this.style.backgroundColor='#eee'"></div>
                             <div class="absolute top-3 left-3 bg-black/40 backdrop-blur-sm rounded-md px-2 py-1">
-                                <p class="text-white text-xs font-bold uppercase tracking-wide">${p.category || '기본'}</p>
+                                <p class="text-white text-xs font-bold uppercase tracking-wide">${escapeHtml(p.category || '기본')}</p>
                             </div>
                         </div>
                         <div class="flex w-full grow flex-col items-stretch justify-center gap-2 p-4">
-                            <p class="text-text-primary text-lg font-bold leading-tight tracking-[-0.015em] line-clamp-2">${p.productName}</p>
+                            <p class="text-text-primary text-lg font-bold leading-tight tracking-[-0.015em] line-clamp-2">${escapeHtml(p.productName)}</p>
                             <div class="flex items-center gap-3 justify-between mt-2">
                                 <p class="text-text-secondary text-base font-normal leading-normal">${priceStr} ${minPrice !== Infinity ? '/ 인' : ''}</p>
                                 <button class="flex min-w-[84px] items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold gap-2">
@@ -884,7 +895,7 @@
                             <span class="material-symbols-outlined text-gray-400 text-2xl mr-2">search</span>
                             <input class="flex-1 bg-transparent outline-none text-text-primary placeholder-gray-400" 
                                 placeholder="상품 검색..." 
-                                value="${state.searchQuery}"
+                                value="${escapeHtml(state.searchQuery)}"
                                 oninput="actions.updateSearch(this.value)" />
                         </div>
                         <button onclick="actions.toggleSort()" class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-text-primary shadow-sm relative">
@@ -917,9 +928,9 @@
             const priceList = (vd.pricingOptions || []).map(opt => `
                 <div class="flex justify-between items-center bg-secondary rounded-lg p-4">
                     <div>
-                        <p class="text-text-primary font-medium">${opt.name}</p>
-                        ${opt.unit ? `<p class="text-xs text-text-secondary">${opt.unit}</p>` : ''}
-                        ${opt.desc ? `<p class="text-xs text-gray-500 mt-1">${opt.desc}</p>` : ''}
+                        <p class="text-text-primary font-medium">${escapeHtml(opt.name)}</p>
+                        ${opt.unit ? `<p class="text-xs text-text-secondary">${escapeHtml(opt.unit)}</p>` : ''}
+                        ${opt.desc ? `<p class="text-xs text-gray-500 mt-1">${escapeHtml(opt.desc)}</p>` : ''}
                     </div>
                     <p class="text-text-primary font-bold text-lg">₩${formatCurrency(opt.price)}</p>
                 </div>
@@ -927,15 +938,15 @@
 
             const faqList = (vd.faq || []).map(f => `
                 <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <p class="font-bold text-primary mb-1">Q. ${f.q}</p>
-                    <p class="text-sm text-gray-600">A. ${f.a}</p>
+                    <p class="font-bold text-primary mb-1">Q. ${escapeHtml(f.q)}</p>
+                    <p class="text-sm text-gray-600">A. ${escapeHtml(f.a)}</p>
                 </div>
             `).join('');
 
             const inputFields = (vd.inputFields || []).map(f => `
                 <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                     <p class="text-xs font-bold text-gray-500 mb-1">${f.label}</p>
-                     <p class="text-sm text-gray-800">${f.value}</p>
+                     <p class="text-xs font-bold text-gray-500 mb-1">${escapeHtml(f.label)}</p>
+                     <p class="text-sm text-gray-800">${escapeHtml(f.value)}</p>
                 </div>
             `).join('');
 
@@ -946,7 +957,7 @@
                         ${inputFields ? `<div class="grid grid-cols-2 gap-2">${inputFields}</div>` : ''}
                         <div>
                             <h3 class="text-lg font-bold text-text-primary mb-2">자세한 설명</h3>
-                            <p class="text-text-secondary leading-relaxed whitespace-pre-line">${vd.description}</p>
+                            <p class="text-text-secondary leading-relaxed whitespace-pre-line">${escapeHtml(vd.description)}</p>
                         </div>
                     </div>
                 `;
@@ -955,7 +966,7 @@
                     <div>
                         <h3 class="text-lg font-bold text-text-primary mb-3">기타사항</h3>
                         <div class="bg-amber-50 border border-amber-100 p-4 rounded-lg">
-                            <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line">${vd.policies?.cancellation || '특별한 유의사항이 없습니다.'}</p>
+                            <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line">${escapeHtml(vd.policies?.cancellation || '특별한 유의사항이 없습니다.')}</p>
                         </div>
                     </div>
                 `;
@@ -973,7 +984,7 @@
             return `
                 <div class="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light">
                     <div class="relative w-full h-[320px]">
-                        <div class="w-full h-full bg-center bg-cover" style="background-image: url('${vd.heroImage}');"></div>
+                        <div class="w-full h-full bg-center bg-cover" style="background-image: url('${escapeHtml(vd.heroImage)}');"></div>
                         <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                         <div class="absolute top-0 left-0 right-0 flex items-center p-4 pt-6 z-10">
                             <button onclick="actions.back()" class="size-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30">
@@ -986,7 +997,7 @@
                             ` : ''}
                         </div>
                         <div class="absolute bottom-0 left-0 right-0 p-6 text-white">
-                            <h1 class="text-2xl font-bold leading-tight mb-2 shadow-sm">${vd.productName}</h1>
+                            <h1 class="text-2xl font-bold leading-tight mb-2 shadow-sm">${escapeHtml(vd.productName)}</h1>
                         </div>
                     </div>
                     
@@ -1062,7 +1073,7 @@
                                     <div class="relative">
                                         <input id="editor-region-search" class="w-full p-3 border rounded-lg text-sm focus:border-primary outline-none" 
                                             placeholder="지역 검색 (예: 다낭)" 
-                                            value="${state.editorRegionSearch}"
+                                            value="${escapeHtml(state.editorRegionSearch)}"
                                             oninput="actions.updateEditorRegionSearch(this.value)">
                                         
                                         ${filteredRegions.length > 0 ? `
@@ -1084,12 +1095,12 @@
 
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">상품명</label>
-                                <input type="text" value="${vd.productName}" oninput="actions.updateViewData('productName', this.value)" class="w-full p-3 rounded-lg border border-gray-300">
+                                <input type="text" value="${escapeHtml(vd.productName)}" oninput="actions.updateViewData('productName', this.value)" class="w-full p-3 rounded-lg border border-gray-300">
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">카테고리</label>
-                                    <input type="text" value="${vd.category}" oninput="actions.updateViewData('category', this.value)" class="w-full p-3 rounded-lg border border-gray-300">
+                                    <input type="text" value="${escapeHtml(vd.category)}" oninput="actions.updateViewData('category', this.value)" class="w-full p-3 rounded-lg border border-gray-300">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">우선순위</label>
@@ -1098,14 +1109,14 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">이미지 URL</label>
-                                <input type="text" value="${vd.heroImage}" oninput="actions.updateViewData('heroImage', this.value)" class="w-full p-3 rounded-lg border border-gray-300 text-xs font-mono">
+                                <input type="text" value="${escapeHtml(vd.heroImage)}" oninput="actions.updateViewData('heroImage', this.value)" class="w-full p-3 rounded-lg border border-gray-300 text-xs font-mono">
                             </div>
                         </div>
 
                         <!-- Description -->
                         <div class="bg-white p-4 rounded-xl border border-gray-200">
                             <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">상세 설명</h3>
-                            <textarea rows="5" oninput="actions.updateViewData('description', this.value)" class="w-full p-3 rounded-lg border border-gray-300">${vd.description}</textarea>
+                            <textarea rows="5" oninput="actions.updateViewData('description', this.value)" class="w-full p-3 rounded-lg border border-gray-300">${escapeHtml(vd.description)}</textarea>
                             
                             <!-- [New] Input Fields Area -->
                             <div class="mt-4 border-t pt-4">
@@ -1115,8 +1126,8 @@
                                 </div>
                                 ${(vd.inputFields || []).map((f, i) => `
                                     <div class="flex gap-2 mb-2">
-                                        <input placeholder="라벨 (예: 픽업 시간)" value="${f.label}" oninput="actions.updateInputField(${i}, 'label', this.value)" class="w-1/3 p-2 border rounded text-xs font-bold">
-                                        <input placeholder="내용 (예: 09:00)" value="${f.value}" oninput="actions.updateInputField(${i}, 'value', this.value)" class="flex-1 p-2 border rounded text-xs">
+                                        <input placeholder="라벨 (예: 픽업 시간)" value="${escapeHtml(f.label)}" oninput="actions.updateInputField(${i}, 'label', this.value)" class="w-1/3 p-2 border rounded text-xs font-bold">
+                                        <input placeholder="내용 (예: 09:00)" value="${escapeHtml(f.value)}" oninput="actions.updateInputField(${i}, 'value', this.value)" class="flex-1 p-2 border rounded text-xs">
                                         <button onclick="actions.removeInputField(${i})" class="text-red-400"><span class="material-symbols-outlined text-sm">close</span></button>
                                     </div>
                                 `).join('')}
@@ -1126,7 +1137,7 @@
                         <!-- Policies -->
                         <div class="bg-white p-4 rounded-xl border border-gray-200">
                             <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">기타사항 (정책)</h3>
-                            <textarea rows="3" oninput="actions.updatePolicy('cancellation', this.value)" class="w-full p-3 rounded-lg border border-gray-300 placeholder-gray-300" placeholder="취소 규정이나 유의사항을 입력하세요.">${vd.policies?.cancellation || ''}</textarea>
+                            <textarea rows="3" oninput="actions.updatePolicy('cancellation', this.value)" class="w-full p-3 rounded-lg border border-gray-300 placeholder-gray-300" placeholder="취소 규정이나 유의사항을 입력하세요.">${escapeHtml(vd.policies?.cancellation || '')}</textarea>
                         </div>
 
                         <!-- Pricing -->
@@ -1139,12 +1150,12 @@
                                 <div class="bg-gray-50 p-3 rounded-lg mb-2 border border-gray-200 relative">
                                     <button onclick="actions.removeOption(${i})" class="absolute top-2 right-2 text-gray-400 hover:text-red-500"><span class="material-symbols-outlined text-sm">close</span></button>
                                     <div class="flex gap-2 mb-2">
-                                        <input placeholder="옵션명 (예: 승용차)" value="${opt.name}" oninput="actions.updateOption(${i}, 'name', this.value)" class="flex-1 p-2 border rounded text-sm">
+                                        <input placeholder="옵션명 (예: 승용차)" value="${escapeHtml(opt.name)}" oninput="actions.updateOption(${i}, 'name', this.value)" class="flex-1 p-2 border rounded text-sm">
                                         <input type="number" placeholder="가격" value="${opt.price}" oninput="actions.updateOption(${i}, 'price', this.value)" class="w-24 p-2 border rounded text-sm text-right">
                                     </div>
                                     <div class="flex gap-2">
-                                        <input placeholder="단위 (예: 1대)" value="${opt.unit}" oninput="actions.updateOption(${i}, 'unit', this.value)" class="w-1/4 p-2 border rounded text-xs text-center">
-                                        <input placeholder="설명 (예: 4인 탑승 가능)" value="${opt.desc}" oninput="actions.updateOption(${i}, 'desc', this.value)" class="flex-1 p-2 border rounded text-xs">
+                                        <input placeholder="단위 (예: 1대)" value="${escapeHtml(opt.unit)}" oninput="actions.updateOption(${i}, 'unit', this.value)" class="w-1/4 p-2 border rounded text-xs text-center">
+                                        <input placeholder="설명 (예: 4인 탑승 가능)" value="${escapeHtml(opt.desc)}" oninput="actions.updateOption(${i}, 'desc', this.value)" class="flex-1 p-2 border rounded text-xs">
                                     </div>
                                 </div>
                             `).join('')}
@@ -1160,8 +1171,8 @@
                                 <div class="bg-gray-50 p-3 rounded-lg mb-2 border border-gray-200 relative">
                                     <button onclick="actions.removeFaq(${i})" class="absolute top-2 right-2 text-gray-400 hover:text-red-500"><span class="material-symbols-outlined text-sm">close</span></button>
                                     <div class="space-y-2 pr-6">
-                                        <input placeholder="질문 (Q)" value="${f.q}" oninput="actions.updateFaq(${i}, 'q', this.value)" class="w-full p-2 border rounded text-sm font-bold">
-                                        <textarea placeholder="답변 (A)" rows="2" oninput="actions.updateFaq(${i}, 'a', this.value)" class="w-full p-2 border rounded text-sm text-gray-600">${f.a}</textarea>
+                                        <input placeholder="질문 (Q)" value="${escapeHtml(f.q)}" oninput="actions.updateFaq(${i}, 'q', this.value)" class="w-full p-2 border rounded text-sm font-bold">
+                                        <textarea placeholder="답변 (A)" rows="2" oninput="actions.updateFaq(${i}, 'a', this.value)" class="w-full p-2 border rounded text-sm text-gray-600">${escapeHtml(f.a)}</textarea>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1190,9 +1201,9 @@
                     return `
                     <div class="bg-white p-4 rounded-xl border border-gray-100 flex items-center justify-between gap-4 hover:shadow-sm transition-shadow">
                         <div class="flex items-center gap-3 flex-1 min-w-0">
-                            <img src="${p.heroImage}" class="w-12 h-12 rounded-lg object-cover bg-gray-200 shrink-0">
+                            <img src="${escapeHtml(p.heroImage)}" class="w-12 h-12 rounded-lg object-cover bg-gray-200 shrink-0">
                             <div class="min-w-0">
-                                <p class="font-bold text-gray-800 text-sm truncate">${p.productName}</p>
+                                <p class="font-bold text-gray-800 text-sm truncate">${escapeHtml(p.productName)}</p>
                                 <p class="text-xs text-gray-500 truncate">${c?.name || '-'} > ${r?.name || '-'}</p>
                             </div>
                         </div>
@@ -1208,7 +1219,7 @@
                     <div class="mb-4">
                         <input id="dash-search" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary" 
                             placeholder="상품명 검색..." 
-                            value="${state.searchQuery}"
+                            value="${escapeHtml(state.searchQuery)}"
                             oninput="actions.updateSearch(this.value)" />
                     </div>
                     <div class="space-y-3">
