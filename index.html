@@ -774,7 +774,12 @@
                 </header>
                 
                 <div class="w-full flex justify-center my-2">
-                    <img src="${BANNER_IMAGE_URL}" alt="Banner" class="max-w-[200px] h-auto object-contain">
+                    <!-- [변경] 메인 배너 로딩 우선순위 상향 (fetchpriority="high") -->
+                    <img src="${BANNER_IMAGE_URL}" 
+                         alt="Banner" 
+                         fetchpriority="high"
+                         decoding="async"
+                         class="max-w-[200px] h-auto object-contain">
                 </div>
 
                 <main class="flex flex-col px-4 pt-6 pb-24 animate-fade-in">
@@ -792,7 +797,13 @@
                     
                     <!-- [NEW] Bottom Banner Image -->
                     <div class="mt-6 w-full">
-                        <img src="https://www.naeiltour.co.kr/images/web/Gemini_Generated_Image_7d7dnb7d7dnb7d7d.png" alt="Event Banner" class="w-full h-auto object-cover rounded-lg shadow-sm">
+                        <!-- [변경] 하단 배너는 천천히 로딩 (loading="lazy") -->
+                        <img src="https://www.naeiltour.co.kr/images/web/Gemini_Generated_Image_7d7dnb7d7dnb7d7d.png" 
+                             alt="Event Banner" 
+                             loading="lazy"
+                             decoding="async"
+                             class="w-full h-auto object-cover rounded-lg shadow-sm bg-gray-100"
+                             onerror="this.style.display='none'">
                     </div>
                 </main>
             `;
@@ -880,7 +891,8 @@
                     return `
                     <div class="flex flex-col items-stretch justify-start rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all cursor-pointer group" onclick="actions.selectProduct('${p.id}')">
                         <div class="relative w-full">
-                            <div class="w-full bg-center bg-no-repeat aspect-[16/9] bg-cover group-hover:scale-105 transition-transform duration-500" 
+                            <!-- [변경] 배경색(bg-gray-100) 추가하여 이미지 로딩 전 빈 공간 느낌 최소화 -->
+                            <div class="w-full bg-center bg-no-repeat aspect-[16/9] bg-cover group-hover:scale-105 transition-transform duration-500 bg-gray-100" 
                                  style="background-image: url('${escapeHtml(p.heroImage)}');" onerror="this.style.backgroundColor='#eee'"></div>
                             <div class="absolute top-3 left-3 bg-black/40 backdrop-blur-sm rounded-md px-2 py-1">
                                 <p class="text-white text-xs font-bold uppercase tracking-wide">${escapeHtml(p.category || '기본')}</p>
